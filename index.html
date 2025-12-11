@@ -397,7 +397,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="version">v3.0</div>
+            <div class="version">v3.1</div>
             <h1>📚 Heimalestur</h1>
             <p>Skráðu lestur barnsins þíns</p>
         </div>
@@ -498,9 +498,20 @@
                 <h2>Stjórna börnum</h2>
                 <p style="margin-bottom: 15px; color: #666;">Hér getur þú bætt við eða eytt börnum úr appinu.</p>
                 
-                <div class="add-child-form">
-                    <input type="text" id="newChildName" placeholder="Nafn á nýju barni">
-                    <button type="button" class="btn btn-small" id="btnAddChild">Bæta við</button>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px; color: #333;">Bæta við nýju barni</h3>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="newChildName">Nafn barns</label>
+                        <input type="text" id="newChildName" placeholder="t.d. Jón Jónsson">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label for="newChildTeacher">Tölvupóstur kennara (valfrjálst)</label>
+                        <input type="email" id="newChildTeacher" placeholder="kennari@skoli.is">
+                    </div>
+                    
+                    <button type="button" class="btn" id="btnAddChild">Bæta við barni</button>
                 </div>
 
                 <div style="margin-top: 20px;">
@@ -606,8 +617,10 @@
 
         // Add child
         document.getElementById('btnAddChild').addEventListener('click', function() {
-            const input = document.getElementById('newChildName');
-            const name = input.value.trim();
+            const nameInput = document.getElementById('newChildName');
+            const teacherInput = document.getElementById('newChildTeacher');
+            const name = nameInput.value.trim();
+            const teacherEmail = teacherInput.value.trim();
             
             if (!name) {
                 alert('Vinsamlegast sláðu inn nafn barns');
@@ -619,9 +632,22 @@
                 return;
             }
             
+            // Validate email if provided
+            if (teacherEmail && !teacherEmail.includes('@')) {
+                alert('Vinsamlegast sláðu inn gilt netfang');
+                return;
+            }
+            
             children.push(name);
+            
+            // Save teacher email if provided
+            if (teacherEmail) {
+                childTeachers[name] = teacherEmail;
+            }
+            
             saveData();
-            input.value = '';
+            nameInput.value = '';
+            teacherInput.value = '';
             
             updateChildrenList();
             updateChildSelect();
