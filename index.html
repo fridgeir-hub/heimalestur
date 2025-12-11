@@ -397,7 +397,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="version">v2.8</div>
+            <div class="version">v2.9</div>
             <h1>📚 Heimalestur</h1>
             <p>Skráðu lestur barnsins þíns</p>
         </div>
@@ -715,20 +715,56 @@
                     const file = e.target.files[0];
                     if (!file) return;
                     
-                    // Check file size (max 500KB)
-                    if (file.size > 500000) {
-                        alert('Mynd er of stór! Veldu mynd sem er minni en 500KB.');
+                    // Check if it's an image
+                    if (!file.type.startsWith('image/')) {
+                        alert('Vinsamlegast veldu mynd (jpg, png, etc.)');
                         fileInput.value = '';
                         return;
                     }
                     
                     const reader = new FileReader();
                     reader.onload = function(event) {
-                        childAvatars[name] = event.target.result;
-                        saveData();
-                        updateChildrenList();
-                        updateStats();
-                        alert('✓ Mynd vistuð!');
+                        const img = new Image();
+                        img.onload = function() {
+                            // Resize image to max 200x200
+                            const canvas = document.createElement('canvas');
+                            const ctx = canvas.getContext('2d');
+                            
+                            const maxSize = 200;
+                            let width = img.width;
+                            let height = img.height;
+                            
+                            // Calculate new dimensions
+                            if (width > height) {
+                                if (width > maxSize) {
+                                    height = (height * maxSize) / width;
+                                    width = maxSize;
+                                }
+                            } else {
+                                if (height > maxSize) {
+                                    width = (width * maxSize) / height;
+                                    height = maxSize;
+                                }
+                            }
+                            
+                            canvas.width = width;
+                            canvas.height = height;
+                            
+                            // Draw resized image
+                            ctx.drawImage(img, 0, 0, width, height);
+                            
+                            // Convert to base64 with compression (0.8 quality)
+                            const resizedImage = canvas.toDataURL('image/jpeg', 0.8);
+                            
+                            console.log('Original size:', file.size, 'Resized:', resizedImage.length);
+                            
+                            childAvatars[name] = resizedImage;
+                            saveData();
+                            updateChildrenList();
+                            updateStats();
+                            alert('✓ Mynd vistuð!');
+                        };
+                        img.src = event.target.result;
                     };
                     reader.readAsDataURL(file);
                 });
