@@ -397,7 +397,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="version">v3.1</div>
+            <div class="version">v3.1.1</div>
             <h1>📚 Heimalestur</h1>
             <p>Skráðu lestur barnsins þíns</p>
         </div>
@@ -852,14 +852,41 @@
                 teacherInput.style.borderRadius = '8px';
                 teacherInput.style.fontSize = '14px';
                 
-                teacherInput.addEventListener('change', function() {
-                    childTeachers[name] = teacherInput.value.trim();
+                const saveTeacherBtn = document.createElement('button');
+                saveTeacherBtn.textContent = '✓ Vista';
+                saveTeacherBtn.style.padding = '8px 16px';
+                saveTeacherBtn.style.background = '#28a745';
+                saveTeacherBtn.style.color = 'white';
+                saveTeacherBtn.style.border = 'none';
+                saveTeacherBtn.style.borderRadius = '8px';
+                saveTeacherBtn.style.cursor = 'pointer';
+                saveTeacherBtn.style.fontSize = '14px';
+                saveTeacherBtn.style.fontWeight = '600';
+                
+                saveTeacherBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const email = teacherInput.value.trim();
+                    
+                    // Validate email if not empty
+                    if (email && !email.includes('@')) {
+                        alert('Vinsamlegast sláðu inn gilt netfang');
+                        return;
+                    }
+                    
+                    if (email) {
+                        childTeachers[name] = email;
+                    } else {
+                        delete childTeachers[name];
+                    }
+                    
                     saveData();
                     console.log('Teacher email saved for', name, ':', childTeachers[name]);
+                    alert('✓ Netfang kennara vistað!');
                 });
                 
                 teacherRow.appendChild(teacherLabel);
                 teacherRow.appendChild(teacherInput);
+                teacherRow.appendChild(saveTeacherBtn);
                 
                 itemDiv.appendChild(topRow);
                 itemDiv.appendChild(bottomRow);
