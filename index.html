@@ -397,7 +397,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="version">v2.9</div>
+            <div class="version">v3.0</div>
             <h1>📚 Heimalestur</h1>
             <p>Skráðu lestur barnsins þíns</p>
         </div>
@@ -470,9 +470,26 @@
             <div id="tabExport" class="tab-content">
                 <div style="margin-top: 0; padding-top: 0; border-top: none;">
                     <h2>Senda til kennara</h2>
-                    <p style="margin-bottom: 15px; color: #666;">Smelltu á hnappinn til að búa til skýrslu sem þú getur sent kennara með tölvupósti.</p>
-                    <button class="btn btn-secondary" id="btnEmail">📧 Búa til tölvupóst</button>
-                    <button class="btn btn-secondary" id="btnDownload">📄 Sækja sem textaskjal</button>
+                    <p style="margin-bottom: 15px; color: #666;">Veldu barn til að senda skýrslu til kennara.</p>
+                    
+                    <div class="form-group">
+                        <label for="exportChildSelect">Veldu barn</label>
+                        <select id="exportChildSelect" style="margin-bottom: 20px;">
+                            <option value="">-- Veldu barn --</option>
+                        </select>
+                    </div>
+                    
+                    <div id="exportButtons" style="display: none;">
+                        <p style="margin-bottom: 15px; color: #666;">
+                            Skýrsla verður send til: <strong id="teacherEmail"></strong>
+                        </p>
+                        <button class="btn btn-secondary" id="btnEmail">📧 Búa til tölvupóst</button>
+                        <button class="btn btn-secondary" id="btnDownload">📄 Sækja sem textaskjal</button>
+                    </div>
+                    
+                    <div id="noTeacherWarning" style="display: none; margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 8px; color: #856404;">
+                        ⚠️ Engin tölvupóstur kennara skráður fyrir þetta barn. Farðu í "Stillingar" til að bæta við netfangi kennara.
+                    </div>
                 </div>
             </div>
 
@@ -523,6 +540,7 @@
         let readingEntries = [];
         let children = [];
         let childAvatars = {}; // Store base64 images for each child
+        let childTeachers = {}; // Store teacher email for each child
         let currentFilter = 'all';
 
         // Wait for DOM to be ready
@@ -533,6 +551,7 @@
                 const savedEntries = localStorage.getItem('readingEntries');
                 const savedChildren = localStorage.getItem('children');
                 const savedAvatars = localStorage.getItem('childAvatars');
+                const savedTeachers = localStorage.getItem('childTeachers');
                 
                 if (savedEntries) {
                     readingEntries = JSON.parse(savedEntries);
@@ -548,6 +567,11 @@
                     childAvatars = JSON.parse(savedAvatars);
                     console.log('Loaded avatars');
                 }
+                
+                if (savedTeachers) {
+                    childTeachers = JSON.parse(savedTeachers);
+                    console.log('Loaded teachers');
+                }
             }
 
             // Save data to localStorage
@@ -555,6 +579,7 @@
                 localStorage.setItem('readingEntries', JSON.stringify(readingEntries));
                 localStorage.setItem('children', JSON.stringify(children));
                 localStorage.setItem('childAvatars', JSON.stringify(childAvatars));
+                localStorage.setItem('childTeachers', JSON.stringify(childTeachers));
                 console.log('Saved! Entries:', readingEntries.length);
             }
 
@@ -672,6 +697,7 @@
                     console.log('Children before filter:', children);
                     children = children.filter(c => c !== name);
                     delete childAvatars[name]; // Remove avatar too
+                    delete childTeachers[name]; // Remove teacher email too
                     console.log('Children after filter:', children);
                     saveData();
                     
@@ -777,8 +803,41 @@
                 bottomRow.appendChild(uploadLabel);
                 bottomRow.appendChild(fileInput);
                 
+                // Teacher email row
+                const teacherRow = document.createElement('div');
+                teacherRow.style.display = 'flex';
+                teacherRow.style.gap = '10px';
+                teacherRow.style.alignItems = 'center';
+                teacherRow.style.marginTop = '5px';
+                
+                const teacherLabel = document.createElement('label');
+                teacherLabel.textContent = 'Tölvupóstur kennara:';
+                teacherLabel.style.fontSize = '14px';
+                teacherLabel.style.color = '#666';
+                teacherLabel.style.minWidth = '150px';
+                
+                const teacherInput = document.createElement('input');
+                teacherInput.type = 'email';
+                teacherInput.placeholder = 'kennari@skoli.is';
+                teacherInput.value = childTeachers[name] || '';
+                teacherInput.style.flex = '1';
+                teacherInput.style.padding = '8px';
+                teacherInput.style.border = '2px solid #e0e0e0';
+                teacherInput.style.borderRadius = '8px';
+                teacherInput.style.fontSize = '14px';
+                
+                teacherInput.addEventListener('change', function() {
+                    childTeachers[name] = teacherInput.value.trim();
+                    saveData();
+                    console.log('Teacher email saved for', name, ':', childTeachers[name]);
+                });
+                
+                teacherRow.appendChild(teacherLabel);
+                teacherRow.appendChild(teacherInput);
+                
                 itemDiv.appendChild(topRow);
                 itemDiv.appendChild(bottomRow);
+                itemDiv.appendChild(teacherRow);
                 container.appendChild(itemDiv);
             });
         }
@@ -786,15 +845,22 @@
         // Update child select dropdown
         function updateChildSelect() {
             const select = document.getElementById('childSelect');
+            const exportSelect = document.getElementById('exportChildSelect');
             const currentValue = select.value;
             
             select.innerHTML = '<option value="">-- Veldu barn --</option>';
+            exportSelect.innerHTML = '<option value="">-- Veldu barn --</option>';
             
             children.forEach(name => {
                 const option = document.createElement('option');
                 option.value = name;
                 option.textContent = name;
                 select.appendChild(option);
+                
+                const exportOption = document.createElement('option');
+                exportOption.value = name;
+                exportOption.textContent = name;
+                exportSelect.appendChild(exportOption);
             });
             
             // Restore selection if still valid
@@ -1101,9 +1167,40 @@
             }
         }
 
-        // Generate report text
+        // Export child selection
+        document.getElementById('exportChildSelect').addEventListener('change', function() {
+            const selectedChild = this.value;
+            const exportButtons = document.getElementById('exportButtons');
+            const noTeacherWarning = document.getElementById('noTeacherWarning');
+            const teacherEmailSpan = document.getElementById('teacherEmail');
+            
+            if (!selectedChild) {
+                exportButtons.style.display = 'none';
+                noTeacherWarning.style.display = 'none';
+                return;
+            }
+            
+            const teacherEmail = childTeachers[selectedChild];
+            
+            if (teacherEmail) {
+                teacherEmailSpan.textContent = teacherEmail;
+                exportButtons.style.display = 'block';
+                noTeacherWarning.style.display = 'none';
+            } else {
+                exportButtons.style.display = 'none';
+                noTeacherWarning.style.display = 'block';
+            }
+        });
+
+        // Generate report text for selected child
         function generateReport() {
-            const filtered = getFilteredEntries();
+            const selectedChild = document.getElementById('exportChildSelect').value;
+            
+            if (!selectedChild) {
+                return null;
+            }
+            
+            const filtered = readingEntries.filter(e => e.childName === selectedChild);
             
             if (filtered.length === 0) {
                 return null;
@@ -1115,11 +1212,7 @@
             let report = '═══════════════════════════════════\n';
             report += '     HEIMALESTUR - SKÝRSLA\n';
             report += '═══════════════════════════════════\n\n';
-            
-            if (currentFilter !== 'all') {
-                report += `Barn: ${currentFilter}\n\n`;
-            }
-            
+            report += `Barn: ${selectedChild}\n\n`;
             report += `Fjöldi skráninga: ${filtered.length}\n`;
             report += `Heildar blaðsíður: ${totalPages}\n`;
             report += `Heildartími: ${totalMinutes} mínútur (${Math.round(totalMinutes/60)} klst.)\n\n`;
@@ -1127,7 +1220,6 @@
 
             filtered.forEach((entry, index) => {
                 report += `${index + 1}. ${formatDate(entry.date)}\n`;
-                report += `   Barn: ${entry.childName}\n`;
                 report += `   Bók: ${entry.bookTitle}\n`;
                 report += `   Lestur: ${entry.pages} blaðsíður, ${entry.minutes} mínútur\n`;
                 if (entry.notes) {
@@ -1144,23 +1236,39 @@
 
         // Export to email
         document.getElementById('btnEmail').addEventListener('click', function() {
-            const report = generateReport();
+            const selectedChild = document.getElementById('exportChildSelect').value;
             
-            if (!report) {
-                alert('Engar skráningar til að senda!');
+            if (!selectedChild) {
+                alert('Vinsamlegast veldu barn');
                 return;
             }
             
-            const subject = 'Heimalestur - Skýrsla';
-            window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(report)}`;
+            const report = generateReport();
+            
+            if (!report) {
+                alert('Engar skráningar fyrir þetta barn!');
+                return;
+            }
+            
+            const teacherEmail = childTeachers[selectedChild] || '';
+            const subject = `Heimalestur - ${selectedChild}`;
+            
+            window.location.href = `mailto:${teacherEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(report)}`;
         });
 
         // Export to text file
         document.getElementById('btnDownload').addEventListener('click', function() {
+            const selectedChild = document.getElementById('exportChildSelect').value;
+            
+            if (!selectedChild) {
+                alert('Vinsamlegast veldu barn');
+                return;
+            }
+            
             const report = generateReport();
             
             if (!report) {
-                alert('Engar skráningar til að sækja!');
+                alert('Engar skráningar fyrir þetta barn!');
                 return;
             }
             
@@ -1168,7 +1276,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `heimalestur_${new Date().toISOString().split('T')[0]}.txt`;
+            a.download = `heimalestur_${selectedChild}_${new Date().toISOString().split('T')[0]}.txt`;
             a.click();
             URL.revokeObjectURL(url);
         });
